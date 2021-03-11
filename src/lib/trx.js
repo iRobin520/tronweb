@@ -4,6 +4,7 @@ import {keccak256, toUtf8Bytes, recoverAddress, SigningKey} from 'utils/ethersUt
 import {ADDRESS_PREFIX} from 'utils/address';
 import Validator from "../paramValidator";
 import injectpromise from 'injectpromise';
+const dsBridge = require("dsbridge")
 
 const TRX_MESSAGE_HEADER = '\x19TRON Signed Message:\n32';
 // it should be: '\x15TRON Signed Message:\n32';
@@ -648,64 +649,87 @@ export default class Trx {
     }
 
     async sign(transaction = false, privateKey = this.tronWeb.defaultPrivateKey, useTronHeader = true, multisig = false, callback = false) {
+        let methodName = 'tron.sign';
+        let parameters = {'data': transaction};
+        return new Promise(function (resolve,reject) {
+            dsBridge.call(methodName, parameters, function (response) {
+                if (response) {
+                    let data = JSON.parse(response);
+                    let result = data['signed'];
+                    let error = data['error'];
+                    if (error) {
+                        reject(error)
+                    } else if (result) {
+                        //message signed callback
+                        resolve(result)
+                    } else {
+                        //transaction signed callback
+                        resolve(data)
+                    }
+                } else {
+                    reject('there is no response from callback');
+                }
+            });
+        });
 
-        if (utils.isFunction(multisig)) {
-            callback = multisig;
-            multisig = false;
-        }
-
-        if (utils.isFunction(useTronHeader)) {
-            callback = useTronHeader;
-            useTronHeader = true;
-            multisig = false;
-        }
-
-        if (utils.isFunction(privateKey)) {
-            callback = privateKey;
-            privateKey = this.tronWeb.defaultPrivateKey;
-            useTronHeader = true;
-            multisig = false;
-        }
-
-
-        if (!callback)
-            return this.injectPromise(this.sign, transaction, privateKey, useTronHeader, multisig);
-
-        // Message signing
-        if (utils.isString(transaction)) {
-
-            if (!utils.isHex(transaction))
-                return callback('Expected hex message input');
-
-            try {
-                const signatureHex = Trx.signString(transaction, privateKey, useTronHeader)
-                return callback(null, signatureHex);
-            } catch (ex) {
-                callback(ex);
-            }
-        }
-
-        if (!utils.isObject(transaction))
-            return callback('Invalid transaction provided');
-
-        if (!multisig && transaction.signature)
-            return callback('Transaction is already signed');
-
-        try {
-            if (!multisig) {
-                const address = this.tronWeb.address.toHex(
-                    this.tronWeb.address.fromPrivateKey(privateKey)
-                ).toLowerCase();
-
-                if (address !== this.tronWeb.address.toHex(transaction.raw_data.contract[0].parameter.value.owner_address))
-                    return callback('Private key does not match address in transaction');
-            }
-            return callback(null,
-                utils.crypto.signTransaction(privateKey, transaction)
-            );
-        } catch (ex) {
-            callback(ex);
-        }
+        // 注释掉原有逻辑改成调源生app的方法
+        // if (utils.isFunction(multisig)) {
+        //     callback = multisig;
+        //     multisig = false;
+        // }
+        //
+        // if (utils.isFunction(useTronHeader)) {
+        //     callback = useTronHeader;
+        //     useTronHeader = true;
+        //     multisig = false;
+        // }
+        //
+        // if (utils.isFunction(privateKey)) {
+        //     callback = privateKey;
+        //     privateKey = this.tronWeb.defaultPrivateKey;
+        //     useTronHeader = true;
+        //     multisig = false;
+        // }
+        //
+        //
+        // if (!callback)
+        //     return this.injectPromise(this.sign, transaction, privateKey, useTronHeader, multisig);
+        //
+        // // Message signing
+        // if (utils.isString(transaction)) {
+        //
+        //     if (!utils.isHex(transaction))
+        //         return callback('Expected hex message input');
+        //
+        //     try {
+        //         const signatureHex = Trx.signString(transaction, privateKey, useTronHeader)
+        //         return callback(null, signatureHex);
+        //     } catch (ex) {
+        //         callback(ex);
+        //     }
+        // }
+        //
+        // if (!utils.isObject(transaction))
+        //     return callback('Invalid transaction provided');
+        //
+        // if (!multisig && transaction.signature)
+        //     return callback('Transaction is already signed');
+        //
+        // try {
+        //     if (!multisig) {
+        //         const address = this.tronWeb.address.toHex(
+        //             this.tronWeb.address.fromPrivateKey(privateKey)
+        //         ).toLowerCase();
+        //
+        //         if (address !== this.tronWeb.address.toHex(transaction.raw_data.contract[0].parameter.value.owner_address))
+        //             return callback('Private key does not match address in transaction');
+        //     }
+        //     return callback(null,
+        //         utils.crypto.signTransaction(privateKey, transaction)
+        //     );
+        // } catch (ex) {
+        //     callback(ex);
+        // }
     }
 
     static signString(message, privateKey, useTronHeader = true) {

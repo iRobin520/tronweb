@@ -17,7 +17,7 @@
     },
     "husky": {
         "hooks": {
-            "pre-commit": "node ./scripts/pre-commit.js"
+            
         }
     },
     "dependencies": {
@@ -25,6 +25,7 @@
         "axios": "^0.21.1",
         "babel-runtime": "^6.26.0",
         "bignumber.js": "^7.2.1",
+        "dsbridge": "^3.1.4",
         "elliptic": "^6.5.3",
         "ethers": "^5.0.8",
         "eventemitter3": "^3.1.0",
